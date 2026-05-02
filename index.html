@@ -5,340 +5,170 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>muvin-bluvin 2.0</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
   :root {
-    --bg: #0d0d0f;
-    --bg2: #16161a;
-    --bg3: #1e1e24;
-    --border: rgba(255,255,255,0.08);
-    --border2: rgba(255,255,255,0.15);
-    --text: #f0ede6;
-    --muted: #888;
-    --gold: #f5c542;
-    --gold-dim: #c49a1a;
-    --star-empty: #2e2e38;
-    --accent: #e8503a;
-    --radius: 12px;
+    --bg:#0d0d0f; --bg2:#16161a; --bg3:#1e1e24;
+    --border:rgba(255,255,255,0.08); --border2:rgba(255,255,255,0.15);
+    --text:#f0ede6; --muted:#888; --gold:#f5c542; --gold-dim:#c49a1a;
+    --star-empty:#2e2e38; --accent:#e8503a; --green:#3ecf8e; --radius:12px;
   }
-
   body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'DM Sans', sans-serif;
-    min-height: 100vh;
-    padding: 2rem 1rem 4rem;
+    background:var(--bg); color:var(--text);
+    font-family:'DM Sans',sans-serif; min-height:100vh; padding:2rem 1rem 4rem;
   }
-
-  /* ── Grain overlay ── */
   body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
-    pointer-events: none;
-    z-index: 0;
-    opacity: 0.6;
+    content:''; position:fixed; inset:0;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events:none; z-index:0; opacity:0.6;
   }
+  .wrap { position:relative; z-index:1; max-width:660px; margin:0 auto; }
 
-  .wrap {
-    position: relative;
-    z-index: 1;
-    max-width: 660px;
-    margin: 0 auto;
+  /* status */
+  .status-bar {
+    display:flex; align-items:center; justify-content:flex-end; gap:6px;
+    margin-bottom:1rem; font-size:0.7rem; letter-spacing:0.1em;
+    text-transform:uppercase; color:var(--muted);
   }
+  .dot { width:7px; height:7px; border-radius:50%; background:var(--muted); transition:background 0.4s; }
+  .dot.online  { background:var(--green); box-shadow:0 0 6px var(--green); }
+  .dot.offline { background:var(--accent); }
+  .dot.loading { background:var(--gold); animation:pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
-  /* ── Header ── */
-  .header {
-    text-align: center;
-    margin-bottom: 3rem;
-  }
-  .film-strip {
-    display: flex;
-    justify-content: center;
-    gap: 6px;
-    margin-bottom: 1.2rem;
-  }
-  .film-hole {
-    width: 14px;
-    height: 10px;
-    border-radius: 2px;
-    background: var(--bg3);
-    border: 1px solid var(--border2);
-  }
+  /* header */
+  .header { text-align:center; margin-bottom:3rem; }
+  .film-strip { display:flex; justify-content:center; gap:6px; margin-bottom:1.2rem; }
+  .film-hole { width:14px; height:10px; border-radius:2px; background:var(--bg3); border:1px solid var(--border2); }
   .header h1 {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: clamp(3.2rem, 10vw, 5.5rem);
-    letter-spacing: 0.04em;
-    line-height: 0.9;
-    color: var(--gold);
-    text-shadow: 0 0 60px rgba(245,197,66,0.2);
+    font-family:'Bebas Neue',sans-serif; font-size:clamp(3.2rem,10vw,5.5rem);
+    letter-spacing:0.04em; line-height:0.9; color:var(--gold);
+    text-shadow:0 0 60px rgba(245,197,66,0.2);
   }
-  .header h1 span {
-    color: var(--accent);
+  .header h1 span { color:var(--accent); }
+  .header p { margin-top:0.6rem; font-size:0.82rem; color:var(--muted); letter-spacing:0.2em; text-transform:uppercase; }
+  .fb-badge {
+    display:inline-flex; align-items:center; gap:5px; margin-top:0.8rem;
+    background:var(--bg3); border:1px solid var(--border); border-radius:100px;
+    padding:3px 10px; font-size:0.68rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted);
   }
-  .header p {
-    margin-top: 0.6rem;
-    font-size: 0.82rem;
-    color: var(--muted);
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-  }
+  .fb-badge svg { width:12px; height:12px; }
 
-  /* ── Card ── */
-  .card {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 2rem;
-    margin-bottom: 1.5rem;
-  }
-  .card-label {
-    font-size: 0.72rem;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 0.55rem;
-  }
+  /* card */
+  .card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:2rem; margin-bottom:1.5rem; }
+  .card-label { font-size:0.72rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--muted); margin-bottom:0.55rem; }
 
-  /* ── Inputs ── */
+  /* inputs */
   input[type="text"], input[type="number"] {
-    width: 100%;
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    color: var(--text);
-    font-family: 'DM Serif Display', serif;
-    font-size: 1.3rem;
-    padding: 0.65rem 1rem;
-    outline: none;
-    transition: border-color 0.2s;
-    appearance: none;
-    -moz-appearance: textfield;
+    width:100%; background:var(--bg3); border:1px solid var(--border); border-radius:8px;
+    color:var(--text); font-family:'DM Serif Display',serif; font-size:1.3rem;
+    padding:0.65rem 1rem; outline:none; transition:border-color 0.2s;
+    appearance:none; -moz-appearance:textfield;
   }
-  input[type="text"]::placeholder, input[type="number"]::placeholder {
-    color: #3a3a48;
-    font-style: italic;
-  }
-  input[type="text"]:focus, input[type="number"]:focus {
-    border-color: var(--gold-dim);
-  }
+  input::placeholder { color:#3a3a48; font-style:italic; }
+  input:focus { border-color:var(--gold-dim); }
   input[type="number"]::-webkit-outer-spin-button,
-  input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+  input[type="number"]::-webkit-inner-spin-button { -webkit-appearance:none; }
 
-  /* ── Stars ── */
-  .stars-row {
-    display: flex;
-    align-items: center;
-    gap: 0;
-    flex-wrap: wrap;
-    margin: 0.4rem 0 1rem;
-  }
+  /* stars */
+  .stars-row { display:flex; flex-wrap:wrap; margin:0.4rem 0 1rem; }
   .star {
-    cursor: pointer;
-    font-size: 2.1rem;
-    color: var(--star-empty);
-    transition: color 0.12s, transform 0.1s;
-    padding: 2px 3px;
-    line-height: 1;
-    user-select: none;
+    cursor:pointer; font-size:2.1rem; color:var(--star-empty);
+    transition:color 0.12s,transform 0.1s; padding:2px 3px; line-height:1; user-select:none;
   }
-  .star:hover { transform: scale(1.18); }
-  .star.lit { color: var(--gold); }
-  .star.hovered { color: var(--gold); }
+  .star:hover { transform:scale(1.18); }
+  .star.lit { color:var(--gold); }
+  .star.hovered { color:var(--gold); }
 
-  .rating-row {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-top: 0.5rem;
-  }
-  .rating-row .num-input-wrap {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    color: var(--muted);
-    font-size: 0.8rem;
-  }
-  .rating-row input[type="number"] {
-    width: 68px;
-    font-size: 1.1rem;
-    font-family: 'DM Sans', sans-serif;
-    font-weight: 500;
-    text-align: center;
-    padding: 0.45rem 0.5rem;
-  }
-  .rating-badge {
-    margin-left: auto;
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 2.2rem;
-    color: var(--gold);
-    letter-spacing: 0.02em;
-  }
-  .rating-badge span { color: var(--muted); font-size: 1.1rem; }
+  .rating-row { display:flex; align-items:center; gap:1rem; margin-top:0.5rem; }
+  .num-wrap { display:flex; align-items:center; gap:0.4rem; color:var(--muted); font-size:0.8rem; }
+  .num-wrap input { width:68px; font-size:1.1rem; font-family:'DM Sans',sans-serif; font-weight:500; text-align:center; padding:0.45rem 0.5rem; }
+  .rbadge { margin-left:auto; font-family:'Bebas Neue',sans-serif; font-size:2.2rem; color:var(--gold); letter-spacing:0.02em; }
+  .rbadge span { color:var(--muted); font-size:1.1rem; }
 
-  /* ── Divider ── */
-  .divider {
-    border: none;
-    border-top: 1px solid var(--border);
-    margin: 1.4rem 0;
-  }
+  .divider { border:none; border-top:1px solid var(--border); margin:1.4rem 0; }
 
-  /* ── Save button ── */
+  /* save btn */
   .btn-save {
-    display: block;
-    width: 100%;
-    padding: 1rem;
-    background: var(--gold);
-    color: #0d0d0f;
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 1.5rem;
-    letter-spacing: 0.12em;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: background 0.15s, transform 0.1s;
-    margin-top: 0.5rem;
+    display:block; width:100%; padding:1rem; background:var(--gold); color:#0d0d0f;
+    font-family:'Bebas Neue',sans-serif; font-size:1.5rem; letter-spacing:0.12em;
+    border:none; border-radius:10px; cursor:pointer; transition:background 0.15s,transform 0.1s,opacity 0.2s; margin-top:0.5rem;
   }
-  .btn-save:hover { background: #f7d06e; }
-  .btn-save:active { transform: scale(0.98); }
+  .btn-save:hover:not(:disabled) { background:#f7d06e; }
+  .btn-save:active:not(:disabled) { transform:scale(0.98); }
+  .btn-save:disabled { opacity:0.45; cursor:not-allowed; }
 
-  /* ── Toast ── */
+  .spinner {
+    display:inline-block; width:14px; height:14px;
+    border:2px solid rgba(0,0,0,0.2); border-top-color:#000;
+    border-radius:50%; animation:spin 0.7s linear infinite; vertical-align:middle; margin-right:6px;
+  }
+  @keyframes spin { to{transform:rotate(360deg)} }
+
+  /* toast */
   .toast {
-    position: fixed;
-    bottom: 2rem;
-    left: 50%;
-    transform: translateX(-50%) translateY(80px);
-    background: var(--gold);
-    color: #111;
-    font-weight: 500;
-    font-size: 0.9rem;
-    padding: 0.6rem 1.4rem;
-    border-radius: 100px;
-    transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.35s;
-    opacity: 0;
-    z-index: 100;
-    white-space: nowrap;
+    position:fixed; bottom:2rem; left:50%; transform:translateX(-50%) translateY(80px);
+    background:var(--gold); color:#111; font-weight:500; font-size:0.9rem;
+    padding:0.6rem 1.4rem; border-radius:100px;
+    transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1),opacity 0.35s;
+    opacity:0; z-index:100; white-space:nowrap;
   }
-  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+  .toast.show { transform:translateX(-50%) translateY(0); opacity:1; }
+  .toast.err  { background:var(--accent); color:#fff; }
 
-  /* ── Saved movies ── */
-  .saved-header {
-    display: flex;
-    align-items: baseline;
-    gap: 0.6rem;
-    margin-bottom: 1.2rem;
+  /* saved section */
+  .sec-head { display:flex; align-items:baseline; gap:0.6rem; margin-bottom:1.2rem; }
+  .sec-head h2 { font-family:'Bebas Neue',sans-serif; font-size:1.8rem; letter-spacing:0.06em; }
+  .pill {
+    background:var(--bg3); color:var(--muted); font-size:0.72rem; font-weight:500;
+    padding:2px 8px; border-radius:100px; border:1px solid var(--border);
   }
-  .saved-header h2 {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 1.8rem;
-    letter-spacing: 0.06em;
-    color: var(--text);
-  }
-  .count-pill {
-    background: var(--bg3);
-    color: var(--muted);
-    font-size: 0.72rem;
-    font-weight: 500;
-    padding: 2px 8px;
-    border-radius: 100px;
-    border: 1px solid var(--border);
-    letter-spacing: 0.05em;
-  }
-
-  .movies-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-  }
+  .movies-list { display:flex; flex-direction:column; gap:0.75rem; }
   .movie-item {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 1rem 1.2rem;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    animation: slideUp 0.3s ease both;
+    background:var(--bg2); border:1px solid var(--border); border-radius:10px;
+    padding:1rem 1.2rem; display:flex; align-items:center; gap:1rem;
+    animation:slideUp 0.3s ease both;
   }
-  @keyframes slideUp {
-    from { opacity: 0; transform: translateY(12px); }
-    to   { opacity: 1; transform: translateY(0); }
+  @keyframes slideUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+  .mscore { font-family:'Bebas Neue',sans-serif; font-size:2rem; color:var(--gold); min-width:42px; line-height:1; text-align:center; }
+  .mscore small { display:block; font-family:'DM Sans',sans-serif; font-size:0.65rem; color:var(--muted); }
+  .minfo { flex:1; min-width:0; }
+  .mtitle { font-family:'DM Serif Display',serif; font-size:1.1rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .mmeta { font-size:0.75rem; color:var(--muted); margin-top:2px; }
+  .mstars { font-size:0.85rem; letter-spacing:1px; }
+  .mstars .lit { color:var(--gold); }
+  .mstars .dim { color:var(--star-empty); }
+  .btn-del {
+    background:none; border:1px solid var(--border); border-radius:6px; color:var(--muted);
+    font-size:0.75rem; padding:4px 8px; cursor:pointer; transition:border-color 0.15s,color 0.15s;
   }
-  .movie-score {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 2rem;
-    color: var(--gold);
-    min-width: 42px;
-    line-height: 1;
-    text-align: center;
+  .btn-del:hover { border-color:var(--accent); color:var(--accent); }
+  .empty { text-align:center; padding:2.5rem 1rem; color:var(--muted); }
+  .empty p { font-size:0.9rem; margin-top:0.4rem; }
+  .skel {
+    background:var(--bg2); border:1px solid var(--border); border-radius:10px;
+    height:68px; position:relative; overflow:hidden;
   }
-  .movie-score small {
-    display: block;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.65rem;
-    color: var(--muted);
-    letter-spacing: 0.05em;
+  .skel::after {
+    content:''; position:absolute; inset:0;
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,0.04),transparent);
+    animation:shimmer 1.4s infinite;
   }
-  .movie-info { flex: 1; min-width: 0; }
-  .movie-title {
-    font-family: 'DM Serif Display', serif;
-    font-size: 1.1rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    color: var(--text);
-  }
-  .movie-meta {
-    font-size: 0.75rem;
-    color: var(--muted);
-    margin-top: 2px;
-  }
-  .movie-stars-sm {
-    font-size: 0.85rem;
-    letter-spacing: 1px;
-  }
-  .movie-stars-sm .lit { color: var(--gold); }
-  .movie-stars-sm .dim { color: var(--star-empty); }
-  .btn-delete {
-    background: none;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    color: var(--muted);
-    font-size: 0.75rem;
-    padding: 4px 8px;
-    cursor: pointer;
-    transition: border-color 0.15s, color 0.15s;
-  }
-  .btn-delete:hover { border-color: var(--accent); color: var(--accent); }
-
-  .empty-state {
-    text-align: center;
-    padding: 2.5rem 1rem;
-    color: var(--muted);
-  }
-  .empty-state p { font-size: 0.9rem; margin-top: 0.4rem; }
-  .empty-reel { font-size: 2.5rem; opacity: 0.3; }
-
-  .section-title-line {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 1.5rem;
-  }
-  .section-title-line::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: var(--border);
-  }
+  @keyframes shimmer { from{transform:translateX(-100%)} to{transform:translateX(100%)} }
+  .sec-line { display:flex; align-items:center; gap:10px; margin-bottom:1.5rem; }
+  .sec-line::after { content:''; flex:1; height:1px; background:var(--border); }
 </style>
 </head>
 <body>
 <div class="wrap">
 
-  <!-- Header -->
+  <div class="status-bar">
+    <span class="dot loading" id="sDot"></span>
+    <span id="sTxt">connecting…</span>
+  </div>
+
   <header class="header">
     <div class="film-strip">
       <div class="film-hole"></div><div class="film-hole"></div><div class="film-hole"></div>
@@ -347,6 +177,14 @@
     </div>
     <h1>muvin-<span>bluvin</span></h1>
     <p>&#9654; Your personal movie vault &nbsp;·&nbsp; v2.0</p>
+    <div class="fb-badge">
+      <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M19.6 3L12.4 14.8L9.2 9L4 20.8C4 26 9.4 30 16 30C22.6 30 28 26 28 20.8L19.6 3Z" fill="#FFA000"/>
+        <path d="M19.6 3L16.8 17.2L28 20.8C28 15 24 8.4 19.6 3Z" fill="#F57C00"/>
+        <path d="M4 20.8L16 24L28 20.8C28 26 22.6 30 16 30C9.4 30 4 26 4 20.8Z" fill="#FFCA28"/>
+      </svg>
+      Firebase · Live sync
+    </div>
     <div class="film-strip" style="margin-top:1rem">
       <div class="film-hole"></div><div class="film-hole"></div><div class="film-hole"></div>
       <div class="film-hole"></div><div class="film-hole"></div><div class="film-hole"></div>
@@ -354,191 +192,202 @@
     </div>
   </header>
 
-  <!-- Form card -->
   <div class="card">
-
-    <!-- Movie Name -->
     <div class="card-label">Movie title</div>
     <input type="text" id="movieName" placeholder="e.g. Interstellar…" autocomplete="off" spellcheck="false">
 
     <hr class="divider">
 
-    <!-- Star Rating -->
     <div class="card-label">Your rating</div>
     <div class="stars-row" id="starRow" role="group" aria-label="Star rating"></div>
-
     <div class="rating-row">
-      <div class="num-input-wrap">
-        <input type="number" id="numRating" min="1" max="10" placeholder="—" aria-label="Numeric rating 1 to 10">
+      <div class="num-wrap">
+        <input type="number" id="numRating" min="1" max="10" placeholder="—" aria-label="Rating 1–10">
         <span>/ 10</span>
       </div>
-      <div class="rating-badge" id="ratingBadge">—<span>/10</span></div>
+      <div class="rbadge" id="ratingBadge">—<span>/10</span></div>
     </div>
 
     <hr class="divider">
 
-    <!-- Reviewer Name -->
     <div class="card-label">Reviewed by</div>
     <input type="text" id="reviewerName" placeholder="Your name…" autocomplete="off">
 
-    <!-- Save -->
     <button class="btn-save" id="saveBtn" onclick="saveMovie()">&#9654;&nbsp; Save for life</button>
   </div>
 
-  <!-- Saved section -->
-  <div class="section-title-line">
-    <div class="saved-header">
+  <div class="sec-line">
+    <div class="sec-head">
       <h2>Saved Movies</h2>
-      <span class="count-pill" id="countPill">0 films</span>
+      <span class="pill" id="countPill">— films</span>
     </div>
   </div>
 
-  <div class="movies-list" id="moviesList"></div>
-
+  <div class="movies-list" id="moviesList">
+    <div class="skel"></div>
+    <div class="skel" style="height:54px;opacity:.6"></div>
+    <div class="skel" style="height:54px;opacity:.35"></div>
+  </div>
 </div>
 
-<!-- Toast -->
-<div class="toast" id="toast">Saved!</div>
+<div class="toast" id="toast"></div>
 
 <script>
-  const STORAGE_KEY = 'muvinbluvin_v2';
-  let currentRating = 0;
+  /* ── Firebase init ── */
+  const firebaseConfig = {
+    apiKey: "AIzaSyAS-j9EpAIrHHEzc5MSFwOmfQFN5YUpVWE",
+    authDomain: "muvin-bluvin-2.firebaseapp.com",
+    projectId: "muvin-bluvin-2",
+    storageBucket: "muvin-bluvin-2.firebasestorage.app",
+    messagingSenderId: "389845235275",
+    appId: "1:389845235275:web:cb464bdf948b4d9059ffce"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+  const col = db.collection('movies');
 
-  /* ── Build stars ── */
+  /* ── Status ── */
+  function setStatus(state, label) {
+    document.getElementById('sDot').className = 'dot ' + state;
+    document.getElementById('sTxt').textContent = label;
+  }
+
+  /* ── Stars ── */
+  let rating = 0;
   const starRow = document.getElementById('starRow');
   for (let i = 1; i <= 10; i++) {
     const s = document.createElement('span');
-    s.className = 'star';
-    s.textContent = '★';
-    s.dataset.val = i;
-    s.setAttribute('role', 'radio');
-    s.setAttribute('aria-label', i + ' star' + (i > 1 ? 's' : ''));
-    s.addEventListener('click', () => setRating(i));
-    s.addEventListener('mouseenter', () => hoverStars(i));
-    s.addEventListener('mouseleave', () => clearHover());
+    s.className = 'star'; s.textContent = '★'; s.dataset.v = i;
+    s.addEventListener('click',  () => setRating(i));
+    s.addEventListener('mouseenter', () => {
+      starRow.querySelectorAll('.star').forEach(x => x.classList.toggle('hovered', +x.dataset.v <= i && +x.dataset.v > rating));
+    });
+    s.addEventListener('mouseleave', () => starRow.querySelectorAll('.star').forEach(x => x.classList.remove('hovered')));
     starRow.appendChild(s);
   }
-
-  function hoverStars(n) {
-    document.querySelectorAll('.star').forEach(s => {
-      const v = +s.dataset.val;
-      s.classList.toggle('hovered', v <= n && v > currentRating);
-    });
-  }
-  function clearHover() {
-    document.querySelectorAll('.star').forEach(s => s.classList.remove('hovered'));
-  }
-
   function setRating(n) {
-    currentRating = n;
-    document.querySelectorAll('.star').forEach(s => {
-      s.classList.toggle('lit', +s.dataset.val <= n);
-    });
+    rating = n;
+    starRow.querySelectorAll('.star').forEach(s => s.classList.toggle('lit', +s.dataset.v <= n));
     document.getElementById('numRating').value = n;
     document.getElementById('ratingBadge').innerHTML = n + '<span>/10</span>';
   }
-
   document.getElementById('numRating').addEventListener('input', function() {
-    let v = Math.min(10, Math.max(1, parseInt(this.value) || 0));
+    const v = Math.min(10, Math.max(1, parseInt(this.value)||0));
     if (v) setRating(v);
   });
 
-  /* ── Load saved ── */
-  function loadMovies() {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-  }
-  function saveMovies(list) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-  }
-
   /* ── Save ── */
-  function saveMovie() {
-    const title = document.getElementById('movieName').value.trim();
+  async function saveMovie() {
+    const title    = document.getElementById('movieName').value.trim();
     const reviewer = document.getElementById('reviewerName').value.trim();
-    if (!title) { shake(document.getElementById('movieName')); return; }
-    if (!currentRating) { shake(starRow); return; }
+    if (!title)    { shake(document.getElementById('movieName')); return; }
+    if (!rating)   { shake(starRow); return; }
     if (!reviewer) { shake(document.getElementById('reviewerName')); return; }
 
-    const movies = loadMovies();
-    movies.unshift({
-      id: Date.now(),
-      title,
-      rating: currentRating,
-      reviewer,
-      date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-    });
-    saveMovies(movies);
-    renderMovies();
-    showToast('✦ ' + title + ' saved forever!');
+    const btn = document.getElementById('saveBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Saving to Firebase…';
 
-    document.getElementById('movieName').value = '';
-    document.getElementById('reviewerName').value = '';
-    document.getElementById('numRating').value = '';
-    document.getElementById('ratingBadge').innerHTML = '—<span>/10</span>';
-    currentRating = 0;
-    document.querySelectorAll('.star').forEach(s => s.classList.remove('lit'));
-  }
-
-  function shake(el) {
-    el.style.transition = 'transform 0.05s';
-    let i = 0;
-    const moves = ['-6px','6px','-4px','4px','-2px','0'];
-    const step = () => { el.style.transform = 'translateX('+moves[i]+')'; if (++i < moves.length) setTimeout(step, 55); else el.style.transform = ''; };
-    step();
+    try {
+      await col.add({
+        title, rating,
+        reviewer,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      showToast('✦ ' + title + ' saved forever!');
+      document.getElementById('movieName').value = '';
+      document.getElementById('reviewerName').value = '';
+      document.getElementById('numRating').value = '';
+      document.getElementById('ratingBadge').innerHTML = '—<span>/10</span>';
+      rating = 0;
+      starRow.querySelectorAll('.star').forEach(s => s.classList.remove('lit'));
+    } catch(e) {
+      console.error(e);
+      showToast('Save failed: ' + e.code, true);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '&#9654;&nbsp; Save for life';
+    }
   }
 
   /* ── Delete ── */
-  function deleteMovie(id) {
-    const movies = loadMovies().filter(m => m.id !== id);
-    saveMovies(movies);
-    renderMovies();
+  async function deleteMovie(id) {
+    try { await col.doc(id).delete(); }
+    catch(e) { showToast('Delete failed: ' + e.code, true); }
   }
+
+  /* ── Real-time listener ── */
+  col.orderBy('createdAt', 'desc').onSnapshot(
+    snap => {
+      setStatus('online', 'live · ' + snap.size + (snap.size === 1 ? ' film' : ' films'));
+      render(snap.docs);
+    },
+    err => {
+      console.error(err);
+      setStatus('offline', 'error — ' + err.code);
+      showToast(err.code === 'permission-denied'
+        ? 'Enable Firestore read/write rules in Firebase console'
+        : 'Connection error: ' + err.code, true);
+      document.getElementById('moviesList').innerHTML =
+        '<div class="empty"><p>⚠ Could not load movies.<br><small>' + err.code + '</small></p></div>';
+    }
+  );
 
   /* ── Render ── */
-  function starHTML(n) {
-    let h = '';
-    for (let i = 1; i <= 10; i++) h += '<span class="' + (i <= n ? 'lit' : 'dim') + '">★</span>';
-    return h;
+  function starsHTML(n) {
+    return Array.from({length:10},(_,i) =>
+      `<span class="${i<n?'lit':'dim'}">★</span>`).join('');
   }
-
-  function renderMovies() {
-    const movies = loadMovies();
+  function fmtDate(ts) {
+    if (!ts) return '—';
+    return (ts.toDate ? ts.toDate() : new Date(ts))
+      .toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+  }
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function render(docs) {
+    document.getElementById('countPill').textContent =
+      docs.length + (docs.length === 1 ? ' film' : ' films');
     const list = document.getElementById('moviesList');
-    const pill = document.getElementById('countPill');
-    pill.textContent = movies.length + (movies.length === 1 ? ' film' : ' films');
-
-    if (!movies.length) {
-      list.innerHTML = '<div class="empty-state"><div class="empty-reel">🎞</div><p>No movies saved yet.<br>Rate something great!</p></div>';
+    if (!docs.length) {
+      list.innerHTML = '<div class="empty"><div style="font-size:2.5rem;opacity:.3">🎞</div><p>No movies saved yet.<br>Rate something great!</p></div>';
       return;
     }
-    list.innerHTML = movies.map((m, idx) => `
-      <div class="movie-item" style="animation-delay:${idx * 0.04}s">
-        <div class="movie-score">${m.rating}<small>/10</small></div>
-        <div class="movie-info">
-          <div class="movie-title">${escHtml(m.title)}</div>
-          <div class="movie-meta">
-            <span class="movie-stars-sm">${starHTML(m.rating)}</span>
-            &nbsp;·&nbsp; by ${escHtml(m.reviewer)} &nbsp;·&nbsp; ${m.date}
+    list.innerHTML = docs.map((doc, i) => {
+      const m = doc.data();
+      return `<div class="movie-item" style="animation-delay:${i*.04}s">
+        <div class="mscore">${m.rating}<small>/10</small></div>
+        <div class="minfo">
+          <div class="mtitle">${esc(m.title)}</div>
+          <div class="mmeta">
+            <span class="mstars">${starsHTML(m.rating)}</span>
+            &nbsp;·&nbsp; by ${esc(m.reviewer)}
+            &nbsp;·&nbsp; ${fmtDate(m.createdAt)}
           </div>
         </div>
-        <button class="btn-delete" onclick="deleteMovie(${m.id})">✕</button>
-      </div>
-    `).join('');
+        <button class="btn-del" onclick="deleteMovie('${doc.id}')">✕</button>
+      </div>`;
+    }).join('');
   }
 
-  function escHtml(s) {
-    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  /* ── Shake ── */
+  function shake(el) {
+    let i = 0;
+    const m = ['-6px','6px','-4px','4px','-2px','0'];
+    const step = () => { el.style.transform='translateX('+m[i]+')'; if(++i<m.length) setTimeout(step,55); else el.style.transform=''; };
+    step();
   }
 
   /* ── Toast ── */
-  function showToast(msg) {
+  function showToast(msg, isErr) {
     const t = document.getElementById('toast');
     t.textContent = msg;
+    t.className = 'toast' + (isErr ? ' err' : '');
+    void t.offsetWidth;
     t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 2600);
+    setTimeout(() => t.classList.remove('show'), 2800);
   }
-
-  renderMovies();
 </script>
 </body>
 </html>
